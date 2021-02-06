@@ -4,9 +4,6 @@ from pyspark import SparkContext
 
 
 def main(args):
-    def debug(x):
-        print(x)
-
     sc = SparkContext(appName='common_neighbors', master=args.master)
 
     lines = sc.textFile(args.input)
@@ -21,9 +18,11 @@ def main(args):
         s, t = edge
         return [edge, (t, s)]
 
-    edges = edges.flatMap(edge_to_edge_plus_reversed).distinct()
+    edges = edges\
+        .flatMap(edge_to_edge_plus_reversed)\
+        .distinct()
 
-    joined_edges = edges.join(edges).distinct()
+    joined_edges = edges.join(edges)
 
     def pairs_with_common_neighbors(pair):
         source = pair[1][0]
@@ -33,29 +32,18 @@ def main(args):
         else:
             return []
 
-    pairs_with_common_neighbors = joined_edges.flatMap(pairs_with_common_neighbors)
+    reduced_pairs_with_common_neighbors = joined_edges\
+        .flatMap(pairs_with_common_neighbors)\
+        .reduceByKey(lambda a, b: a + b)
 
-    reduced_pairs = pairs_with_common_neighbors.reduceByKey(lambda a, b: a + b)
+    result = reduced_pairs_with_common_neighbors\
+        .leftOuterJoin(edges.map(lambda edge: (edge, edge)))\
+        .filter(lambda e: e[1][1] is None)\
+        .map(lambda node_object: (int(node_object[1][0]), node_object[0]))\
+        .sortByKey(ascending=False)
 
-    def test(t):
-        node = t[0]
-        akmi = t[1][0]
-        haveNeighbor = t[1][1][0]
-        haveNeighborReversed = (haveNeighbor[1], haveNeighbor[0])
-        if akmi != haveNeighbor and akmi != haveNeighborReversed:
-            return True
-        return False
-
-    fuckedEdges = edges.map(lambda edge: (edge, edge))
-    # result = edges.map(lambda edge: (edge[0], edge)).leftOuterJoin()join(reduced_pairs.map(lambda e: (e[0][0], e))).filter(test).map(lambda element: element[1][1]).distinct()
-    result = reduced_pairs.leftOuterJoin(fuckedEdges).distinct().filter(lambda e: e[1][1] is None).map(lambda makrinar: (makrinar[0], makrinar[1][0])).sortBy(lambda a, ascending=False: a[1])
-    # result.foreach(debug)
-    # # reduced_pairs.foreach(debug)
-
-    # result = sc.parallelize(reduced_pairs.take(args.limit))
-    # result.saveAsTextFile(args.output)
+    result = sc.parallelize(result.take(args.limit))
     result.saveAsTextFile(args.output)
-    # reduced_pairs.foreach(debug)
     sc.stop()
 
 
