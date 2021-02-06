@@ -45,8 +45,44 @@ def main(args):
         .map(lambda node_object: (int(node_object[1][0]), node_object[0]))\
         .sortByKey(ascending=False)
 
-    result = sc.parallelize(result.take(args.limit))
-    # result.saveAsTextFile(args.output)
+    def res_to_res_plus_reversed(res):
+        neighbors = res[0]
+        s, t = res[1]
+        return [res, (neighbors, (t, s))]
+
+    joined_results = result.flatMap(res_to_res_plus_reversed)
+
+    def fix_keys(key):
+        source = key[0][0]
+        target = key[0][1]
+        count = key[1]
+        neighbor = key[2]
+        if int(source) > int(target):
+            return (target, source), count, neighbor
+        return key
+
+    def finalMap(key):
+        source = key[0][0]
+        target = key[0][1]
+        common_neighbors = key[0][2]
+        all_neighbors = key[1]
+
+        return float(common_neighbors)/float(all_neighbors), (source, target)
+
+    neighbors = joined_results\
+        .map(lambda obj: (obj[1][0], (obj[1][1], obj[0])))\
+        .join(edges)\
+        .map(lambda res: ((res[0], res[1][0][0]), res[1][0][1], res[1][1]))\
+        .map(fix_keys)\
+        .distinct()\
+        .map(lambda obj: ((obj[0][0], obj[0][1], obj[1]), 1))\
+        .reduceByKey(lambda a, b: a + b)\
+        .map(finalMap)\
+        .sortByKey(ascending=False)
+
+    neighbors.foreach(debug)
+    neighbors = sc.parallelize(neighbors.take(args.limit))
+    # neighbors.saveAsTextFile(args.output)
     sc.stop()
 
 
