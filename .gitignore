@@ -1,5 +1,4 @@
 venv
+.vscode
 .idea
 output
-data/out.ego-facebook
-data/test.txt
