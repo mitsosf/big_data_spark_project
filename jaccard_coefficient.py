@@ -4,9 +4,6 @@ from pyspark import SparkContext
 
 
 def main(args):
-    def debug(x):
-        print(x)
-
     sc = SparkContext(appName='common_neighbors', master=args.master)
 
     lines = sc.textFile(args.input)
@@ -80,7 +77,6 @@ def main(args):
         .map(calculate_jc)\
         .sortByKey(ascending=False)
 
-    # neighbors.foreach(debug)
     neighbors = sc.parallelize(neighbors.take(args.limit))
     neighbors.saveAsTextFile(args.output)
     sc.stop()
