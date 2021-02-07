@@ -39,8 +39,7 @@ def main(args):
     cm = reduced_pairs_with_common_neighbors\
         .leftOuterJoin(edges.map(lambda edge: (edge, edge)))\
         .filter(lambda e: e[1][1] is None)\
-        .map(lambda node_object: (int(node_object[1][0]), node_object[0]))\
-        .sortByKey(ascending=False)
+        .map(lambda node_object: (int(node_object[1][0]), node_object[0]))
 
     def cm_to_cm_plus_reversed(obj):
         neighbor_pair = obj[0]
